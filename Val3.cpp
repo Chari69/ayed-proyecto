@@ -52,7 +52,8 @@ public:
 //Globales //////////////////////////////////////////////////////////
 int n_numoris = 0;
 int encontrado = false;
-//Numori* conjunto_solucion = new Numori[n_numoris]; 
+bool hasFindedSol = false;
+Numori *solucion = new Numori[6];
 // Fin de globales /////////////////////////////////////////////////
 
 // Prototipos de funciones
@@ -337,30 +338,48 @@ void aplicarAlternativa(Numori* conjunto_solucion=nullptr ,Numori alternativa=Nu
     conjunto_solucion[i] = alternativa;
 }
 
+void esMejorSol(Numori* conjunto_solucion){
+    if(hasFindedSol == false) {
+        hasFindedSol = true;
+        copyArr(conjunto_solucion, solucion, 6);
+    } 
+
+    int sumaSolGlobal=0, sumaSolActual=0;
+    for(int i = 0; i<6; i++){
+        sumaSolGlobal= sumaSolGlobal + solucion[i].id;
+        sumaSolActual= sumaSolActual + conjunto_solucion[i].id;
+    }
+    if(sumaSolActual<sumaSolGlobal){
+        copyArr(conjunto_solucion, solucion, 6);
+    } else if (sumaSolActual == sumaSolGlobal) {
+        string numeroCompletoSolActual, numeroCompletoMejorSol;
+        for (int i = 0; i < 6; i++) {
+            numeroCompletoSolActual += to_string(conjunto_solucion[i].id);//sugeri el *10 pero jose se metio el deo
+            numeroCompletoMejorSol += to_string(solucion[i].id);
+        }
+
+        if (stoi(numeroCompletoSolActual) < stoi(numeroCompletoMejorSol)) {
+            copyArr(conjunto_solucion, solucion, 6);
+        }
+    }
+}
+
 int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(),Numori* conjunto_solucion=nullptr) {
     int i = 0;
-
     Torre TempTorre;
     TempTorre.CopyTower(TorreInstance);
     copyArr(TorreInstance.floorMap, TempTorre.floorMap, TorreInstance.enemies);
-
-    while (i < n_numoris && !encontrado)
+    while (i < n_numoris)
     {
         if (alternativaValida(conjunto_solucion ,paso,numoris[i]))
         {
             aplicarAlternativa(conjunto_solucion,numoris[i], paso);
-            bool TorreLBool = TorreLimpiada(conjunto_solucion, TempTorre);
-            if (paso == n_numoris - 1 && TorreLBool) {
-                //encontrado = true;
-                cout<<"encontre la solucion!" << endl;
-                for (int j = 0; j < n_numoris; j++) {
-                    cout << conjunto_solucion[j].id << " ";
-                }
+            if (paso == n_numoris - 1 && TorreLimpiada(conjunto_solucion, TempTorre)) {
+                esMejorSol(conjunto_solucion);
             } else {
                 backtracking(paso + 1, numoris, TorreInstance, conjunto_solucion);
             }
             deshacerAlternativa(conjunto_solucion,paso);
-            
         }
         i++;
     }
@@ -374,10 +393,14 @@ int main() {
     string torre = "Torre" + towerNumber + ".in";
     Numori* numoris = ReadNumoris(NumorisData);
     Torre TorreInstance = ReadTower(torre, numoris);
-    Numori conjunto_solucion[n_numoris]; // no se si esto es necesario, pero lo dejo por las dudas
+    Numori conjunto_solucion[6];
 
     //TorreInstance.printFloorEnemies();
     backtracking(0, numoris, TorreInstance, conjunto_solucion);
 
+    for (int i = 0; i < 6; i++) {
+        cout << solucion[i].id << " ";
+    }
+    
     return 0;
 }
