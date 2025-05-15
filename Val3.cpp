@@ -12,7 +12,7 @@ public:
     string name = "";
     string type = "";
     float attack = 0.0;
-    float life = 1.0;
+    float life = 0.0;
     bool muerto=false; // esto lo podriamos borrar, realmente no se usa en la implementacion actual
 };
 
@@ -33,6 +33,13 @@ public:
         cout << endl;
     }
 
+    void CopyTower(Torre old_tower) {
+        this->enemies = old_tower.enemies;
+        this->floors = old_tower.floors;
+        this->floorEnemies = old_tower.floorEnemies;
+        this->floorMap = new Numori[old_tower.enemies];
+    }
+
     void printFloorEnemies() {
         cout << "Enemigos por piso: ";
         for (int i = 0; i < floors; i++) {
@@ -45,7 +52,7 @@ public:
 //Globales //////////////////////////////////////////////////////////
 int n_numoris = 0;
 int encontrado = false;
-Numori* conjunto_solucion = new Numori[n_numoris]; 
+//Numori* conjunto_solucion = new Numori[n_numoris]; 
 // Fin de globales /////////////////////////////////////////////////
 
 // Prototipos de funciones
@@ -178,6 +185,11 @@ Torre ReadTower(string filename, Numori* numorisDB) {
     return TorreInstance;
 }
 
+void copyArr(Numori *old_arr, Numori *new_arr, int size) {
+    for (int i = 0; i < size; i++) {
+        new_arr[i] = old_arr[i];
+    }
+}
 
 float AttackRival(Numori *numoriUser, Numori *numoriRival, int user, int rival) {
     // Tipo Agua
@@ -254,6 +266,7 @@ bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHav
 
     // Todo nuestro equipo esta muerto
     if(SelectedUser == -1) {
+        if (DEBUG) cout << "MORISTE... INTENTANDO OTRA ALTERNATIVA." << endl;
         return false;
     }
 
@@ -295,7 +308,7 @@ bool TorreLimpiada(Numori* numoris, Torre TorreInstance, int piso = 0, int victo
         return true;
     }
 
-    cout << "PISO " << piso << endl;
+    if (DEBUG) cout << "=======================\n" << "PISO " << piso << endl << "=======================\n";
 
     if(Combat(numoris, TorreInstance, piso)) {
         victorias++;
@@ -307,33 +320,49 @@ bool TorreLimpiada(Numori* numoris, Torre TorreInstance, int piso = 0, int victo
     return TorreLimpiada(numoris, TorreInstance, piso, victorias);
 }
 
-bool alternativaValida(int paso) {
+bool alternativaValida(Numori* conjunto_solucion=nullptr,int paso=0, Numori alternativa=Numori()) {
+    for (int i = 0; i < n_numoris; i++) {
+        if (conjunto_solucion[i].id == alternativa.id) {
+            return false;
+        }
+    }
     return paso<n_numoris? true : false;
-}
-void aplicarAlternativa(Numori alternativa , int i=0) {
-    conjunto_solucion[i] = alternativa;
-}
-void deshacerAlternativa(int i=0) {
-    conjunto_solucion[i] = Numori();
+
 }
 
-int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre()) {
+void deshacerAlternativa(Numori* conjunto_solucion=nullptr ,int i=0) {
+    conjunto_solucion[i] = Numori();
+}
+void aplicarAlternativa(Numori* conjunto_solucion=nullptr ,Numori alternativa=Numori(), int i=0) {
+    conjunto_solucion[i] = alternativa;
+}
+
+int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(),Numori* conjunto_solucion=nullptr) {
     int i = 0;
+
+    Torre TempTorre;
+    TempTorre.CopyTower(TorreInstance);
+    copyArr(TorreInstance.floorMap, TempTorre.floorMap, TorreInstance.enemies);
+
     while (i < n_numoris && !encontrado)
     {
-        if (alternativaValida(paso))
+        if (alternativaValida(conjunto_solucion ,paso,numoris[i]))
         {
-            aplicarAlternativa(numoris[i], i);
-            if (TorreLimpiada(conjunto_solucion, TorreInstance)) {
-                encontrado = true;
+            aplicarAlternativa(conjunto_solucion,numoris[i], paso);
+            bool TorreLBool = TorreLimpiada(conjunto_solucion, TempTorre);
+            if (paso == n_numoris - 1 && TorreLBool) {
+                //encontrado = true;
+                cout<<"encontre la solucion!" << endl;
+                for (int j = 0; j < n_numoris; j++) {
+                    cout << conjunto_solucion[j].id << " ";
+                }
             } else {
-                backtracking(paso + 1, numoris, TorreInstance);
+                backtracking(paso + 1, numoris, TorreInstance, conjunto_solucion);
             }
-            if (!encontrado) {
-                deshacerAlternativa(i);
-            }
+            deshacerAlternativa(conjunto_solucion,paso);
+            
         }
-        ++i;
+        i++;
     }
     return 0;
 }
@@ -345,10 +374,10 @@ int main() {
     string torre = "Torre" + towerNumber + ".in";
     Numori* numoris = ReadNumoris(NumorisData);
     Torre TorreInstance = ReadTower(torre, numoris);
+    Numori conjunto_solucion[n_numoris]; // no se si esto es necesario, pero lo dejo por las dudas
 
     //TorreInstance.printFloorEnemies();
-    //cout << TorreLimpiada(numoris, TorreInstance) << endl;
-    backtracking(0, numoris, TorreInstance);
+    backtracking(0, numoris, TorreInstance, conjunto_solucion);
 
     return 0;
 }
