@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-
 using namespace std;
 
 bool DEBUG = false; // Hay que borrar todo lo que sea debug al final.
@@ -46,6 +45,10 @@ public:
             cout << floorEnemies[i] << " ";
         }
         cout << endl;
+    }
+
+    void FreeMemory() {
+        delete[] floorMap;
     }
 };
 
@@ -324,22 +327,23 @@ bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHav
 // solo pasale el numori y la torre, no hace falta el piso ni victorias
 // esto tambien es recursivo. No se si era 100% necesario que fuera asi, pero lo vi mas sencillo hacerlo asi que de otra manera
 // te va a retornar true si la torre fue limpiada (ganamos todos los combates), false si perdemos uno solo.
-bool TorreLimpiada(Numori* numoris, Torre TorreInstance, int piso = 0, int victorias = 0) {
-    if(victorias == TorreInstance.floors) { // ganamos cuando el numero de victorias es igual al numero de pisos
+bool TorreLimpiada(Numori* numoris, Torre TorreInstance) {
+    int victorias = 0;
+
+    for(int i = 0; i < TorreInstance.floors; i++) {
+        if(Combat(numoris, TorreInstance, i)) {   
+            victorias++;
+        } else {
+            return false;
+        }
+    }
+
+    if (victorias == TorreInstance.floors) {
         if(DEBUG) cout << "Torre Limpiada!" << endl; // DEBUG
         return true;
     }
 
-    if (DEBUG) cout << "=======================\n" << "PISO " << piso << endl << "=======================\n";
-
-    if(Combat(numoris, TorreInstance, piso)) {
-        victorias++;
-        piso++;
-    } else {
-        return false;
-    }
-
-    return TorreLimpiada(numoris, TorreInstance, piso, victorias);
+    return false; 
 }
 
 
@@ -456,6 +460,7 @@ int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(
         }
         i++;
     }
+    TempTorre.FreeMemory();
     return 0;
 }
 
@@ -474,6 +479,6 @@ int main() {
     for (int i = 0; i < numorisMaximos; i++) {
         cout << solucion[i].id << " ";
     }
-    
+
     return 0;
 }
