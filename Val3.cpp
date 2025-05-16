@@ -50,10 +50,15 @@ public:
 };
 
 //Globales //////////////////////////////////////////////////////////
+const int numorisMaximos=6;
 int n_numoris = 0;
 int encontrado = false;
 bool hasFindedSol = false;
-Numori *solucion = new Numori[6];
+Numori *solucion = new Numori[numorisMaximos];
+float totalDamage = 0.0;
+float current_damage;
+int deaths = 0;
+int current_deaths = 0;
 // Fin de globales /////////////////////////////////////////////////
 
 // Prototipos de funciones
@@ -169,16 +174,23 @@ Torre ReadTower(string filename, Numori* numorisDB) {
     file >> line; getline(file, line); // saltamos primera linea y vamos directamente a los pisos.
 
     i = 0; int floorEnemies = 0;
+
+    bool inNumber = false;
+
     while (getline(file, line)) {
         for (int j = 0; j < line.length(); j++) {
             if (line[j] == ' ') {
+                if(inNumber) {
+                    inNumber = false;
+                }
                 continue;
-            } else {
+            } else if(!inNumber) {
                 floorEnemies++;
+                inNumber = true;
             }
         }
         TorreInstance.floorEnemies[i] = floorEnemies;
-        i++; floorEnemies = 0;
+        i++; floorEnemies = 0; inNumber = false;
     }
 
     file.close();
@@ -257,7 +269,7 @@ int getFloorEnd(Torre numoriTower, int piso) {
 
 bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHaveTurn = false, int SelectedUser = 0, int SelectedRival = 0) 
 {
-    SelectedUser = SearchNumoriAliveAndReturnArrPositon(numoriUser, 6);
+    SelectedUser = SearchNumoriAliveAndReturnArrPositon(numoriUser, numorisMaximos);
     SelectedRival = SearchNumoriAliveAndReturnArrPositon(numoriTower.floorMap, getFloorEnd(numoriTower, piso), getFloorInit(numoriTower, piso)); 
 
     // Todo equipo rival el rival esta muerto
@@ -287,6 +299,15 @@ bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHav
     } else { // Turno del rival
         float dmg = AttackRival(numoriTower.floorMap, numoriUser, SelectedRival, SelectedUser); 
         float &userLife = numoriUser[SelectedUser].life;
+
+        //parche para q el daño no se pase de la vida del numori
+        if (dmg >= userLife) {
+            current_damage += userLife;
+            current_deaths++;
+        } else {
+            current_damage += dmg;
+        }
+
         userLife -= dmg;
         if (DEBUG) {
             cout << "Turno de: RIVAL" << endl;
@@ -321,13 +342,38 @@ bool TorreLimpiada(Numori* numoris, Torre TorreInstance, int piso = 0, int victo
     return TorreLimpiada(numoris, TorreInstance, piso, victorias);
 }
 
+
+bool compareDamage(float &current_damage, float &totalDamage) {
+    if(current_damage <= totalDamage) {
+        return true;
+    }
+    return false;
+}
+
+bool compareDeaths(int &current_deaths, int &deaths) {
+    if(current_deaths <= deaths) {
+        return true;
+    }
+    return false;
+}
+
+void applyGlobalsSol() {
+    deaths = current_deaths;
+    totalDamage = current_damage;
+}
+
+void resetGlobalsSol() {
+    current_damage = 0.0;
+    current_deaths = 0;
+}
+
 bool alternativaValida(Numori* conjunto_solucion=nullptr,int paso=0, Numori alternativa=Numori()) {
-    for (int i = 0; i < n_numoris; i++) {
+    for (int i = 0; i < numorisMaximos ; i++) {
         if (conjunto_solucion[i].id == alternativa.id) {
             return false;
         }
     }
-    return paso<n_numoris? true : false;
+    return paso<numorisMaximos? true : false;
 
 }
 
@@ -341,41 +387,68 @@ void aplicarAlternativa(Numori* conjunto_solucion=nullptr ,Numori alternativa=Nu
 void esMejorSol(Numori* conjunto_solucion){
     if(hasFindedSol == false) {
         hasFindedSol = true;
-        copyArr(conjunto_solucion, solucion, 6);
+        copyArr(conjunto_solucion, solucion, numorisMaximos);
+        applyGlobalsSol();
+        return;
     } 
 
-    int sumaSolGlobal=0, sumaSolActual=0;
-    for(int i = 0; i<6; i++){
-        sumaSolGlobal= sumaSolGlobal + solucion[i].id;
-        sumaSolActual= sumaSolActual + conjunto_solucion[i].id;
-    }
-    if(sumaSolActual<sumaSolGlobal){
-        copyArr(conjunto_solucion, solucion, 6);
-    } else if (sumaSolActual == sumaSolGlobal) {
-        string numeroCompletoSolActual, numeroCompletoMejorSol;
-        for (int i = 0; i < 6; i++) {
-            numeroCompletoSolActual += to_string(conjunto_solucion[i].id);//sugeri el *10 pero jose se metio el deo
-            numeroCompletoMejorSol += to_string(solucion[i].id);
-        }
-
-        if (stoi(numeroCompletoSolActual) < stoi(numeroCompletoMejorSol)) {
-            copyArr(conjunto_solucion, solucion, 6);
+    if (compareDamage(current_damage, totalDamage) || compareDeaths(current_deaths, deaths)) {
+        if(current_damage == totalDamage && current_deaths == deaths) {
+            int sumaSolGlobal=0, sumaSolActual=0;
+            for(int i = 0; i<numorisMaximos; i++){
+                sumaSolGlobal += solucion[i].id;
+                sumaSolActual += conjunto_solucion[i].id;
+            }
+            if(sumaSolActual < sumaSolGlobal) {
+                copyArr(conjunto_solucion, solucion, numorisMaximos);
+                applyGlobalsSol();
+            } else if (sumaSolActual == sumaSolGlobal) {
+                string numeroCompletoSolActual, numeroCompletoMejorSol;
+                for (int i = 0; i < numorisMaximos; i++) {
+                    numeroCompletoSolActual += to_string(conjunto_solucion[i].id);
+                    numeroCompletoMejorSol += to_string(solucion[i].id);
+                }
+                if (stoi(numeroCompletoSolActual) < stoi(numeroCompletoMejorSol)) {
+                    copyArr(conjunto_solucion, solucion, numorisMaximos);
+                    applyGlobalsSol();
+                }
+            }
+        } else if (current_damage < totalDamage && current_deaths < deaths) {
+            copyArr(conjunto_solucion, solucion, numorisMaximos);
+            applyGlobalsSol();
         }
     }
 }
 
 int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(),Numori* conjunto_solucion=nullptr) {
     int i = 0;
+    
     Torre TempTorre;
     TempTorre.CopyTower(TorreInstance);
     copyArr(TorreInstance.floorMap, TempTorre.floorMap, TorreInstance.enemies);
+
+    Numori TempNumoris[numorisMaximos];
+
     while (i < n_numoris)
     {
         if (alternativaValida(conjunto_solucion ,paso,numoris[i]))
         {
             aplicarAlternativa(conjunto_solucion,numoris[i], paso);
-            if (paso == n_numoris - 1 && TorreLimpiada(conjunto_solucion, TempTorre)) {
-                esMejorSol(conjunto_solucion);
+
+            if (conjunto_solucion[0].id == 2 &&
+                    conjunto_solucion[1].id == 1 &&
+                    conjunto_solucion[2].id == 3 &&
+                    conjunto_solucion[3].id == 4 &&
+                    conjunto_solucion[4].id == 5 &&
+                    conjunto_solucion[5].id == 6) {
+                    cout << "Solucion encontrada: ";
+                    }
+            if (paso == numorisMaximos-1) {
+                copyArr(conjunto_solucion, TempNumoris, numorisMaximos);
+            }
+            if (paso == numorisMaximos-1 && TorreLimpiada(TempNumoris, TempTorre)) {
+                esMejorSol(TempNumoris);
+                resetGlobalsSol();
             } else {
                 backtracking(paso + 1, numoris, TorreInstance, conjunto_solucion);
             }
@@ -393,12 +466,12 @@ int main() {
     string torre = "Torre" + towerNumber + ".in";
     Numori* numoris = ReadNumoris(NumorisData);
     Torre TorreInstance = ReadTower(torre, numoris);
-    Numori conjunto_solucion[6];
+    Numori conjunto_solucion[numorisMaximos];
 
     //TorreInstance.printFloorEnemies();
     backtracking(0, numoris, TorreInstance, conjunto_solucion);
 
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < numorisMaximos; i++) {
         cout << solucion[i].id << " ";
     }
     
