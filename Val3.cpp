@@ -13,7 +13,6 @@ public:
     string type = "";
     float attack = 0.0;
     float life = 0.0;
-    bool muerto=false; // esto lo podriamos borrar, realmente no se usa en la implementacion actual
 };
 
 class Torre {
@@ -22,30 +21,12 @@ public:
     int enemies = 0;
     int *floorEnemies = nullptr; 
     Numori *floorMap = nullptr;
-    
-    // DEBUG
-    void print() {
-        cout << "Torre: " << floors << " pisos" << endl;
-        cout << "Enemigos en la torre (ID): "; 
-        for (int i = 0; i < enemies; i++) {
-            cout << floorMap[i].name << ", ";
-        }
-        cout << endl;
-    }
 
     void CopyTower(Torre old_tower) {
         this->enemies = old_tower.enemies;
         this->floors = old_tower.floors;
         this->floorEnemies = old_tower.floorEnemies;
         this->floorMap = new Numori[old_tower.enemies];
-    }
-
-    void printFloorEnemies() {
-        cout << "Enemigos por piso: ";
-        for (int i = 0; i < floors; i++) {
-            cout << floorEnemies[i] << " ";
-        }
-        cout << endl;
     }
 
     void FreeMemory() {
@@ -65,7 +46,6 @@ int deaths = 0;
 int current_deaths = 0;
 // Fin de globales /////////////////////////////////////////////////
 
-// Prototipos de funciones
 Numori* ReadNumoris(string filename) {
     ifstream file(filename);
     if (!file.is_open()) {
@@ -78,7 +58,7 @@ Numori* ReadNumoris(string filename) {
     // tomo el valor de cuantos numoris hay
     file >> line;
     n_numoris = stoi(line);
-    Numori* numoris = new Numori[n_numoris]; // recuerda liberar memoria cuando ya no sea necesario
+    Numori* numoris = new Numori[n_numoris];
 
     // relleno los datos de los numoris
     int i = 0, j = 0;
@@ -143,7 +123,7 @@ Torre ReadTower(string filename, Numori* numorisDB) {
     ifstream file(filename);
     if (!file.is_open()) {
         cout << "Error opening file: " << filename << endl;
-        return Torre(); // probablemente haya que hacer algo aca
+        return Torre(); 
     }
     
     string line;
@@ -266,7 +246,6 @@ int getFloorInit(Torre numoriTower, int piso) {
 }
 
 // Obtiene la posicion final del arreglo de enemigos en la torre en determinado piso.
-// HAY QUE TESTEAR, deberia estar bien.
 int getFloorEnd(Torre numoriTower, int piso) {
     return numoriTower.floorEnemies[piso] + getFloorInit(numoriTower, piso);
 }
@@ -274,9 +253,7 @@ int getFloorEnd(Torre numoriTower, int piso) {
 bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHaveTurn = false, int SelectedUser = 0, int SelectedRival = 0) 
 {
     SelectedUser = SearchNumoriAliveAndReturnArrPositon(numoriUser, numorisMaximos);
-    int gfe = getFloorEnd(numoriTower, piso);
-    int gfi = getFloorInit(numoriTower, piso);
-    SelectedRival = SearchNumoriAliveAndReturnArrPositon(numoriTower.floorMap, gfe, gfi); 
+    SelectedRival = SearchNumoriAliveAndReturnArrPositon(numoriTower.floorMap, getFloorEnd(numoriTower, piso), getFloorInit(numoriTower, piso)); 
 
     // Todo equipo rival el rival esta muerto
     if(SelectedRival == -1) {
@@ -421,7 +398,6 @@ void esMejorSol(Numori* conjunto_solucion){
 int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(),Numori* conjunto_solucion=nullptr) {
     Torre TempTorre;                            // optimizacion
     TempTorre.CopyTower(TorreInstance);         // optimizacion
-    // optimizacion
     Numori TempNumoris[numorisMaximos];         // optimizacion
 
     int i = 0;
@@ -430,15 +406,6 @@ int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(
         if (alternativaValida(conjunto_solucion ,paso,numoris[i]))
         {
             aplicarAlternativa(conjunto_solucion,numoris[i], paso);
-
-            if (conjunto_solucion[0].id == 1 &&
-                    conjunto_solucion[1].id == 2 &&
-                    conjunto_solucion[2].id == 3 &&
-                    conjunto_solucion[3].id == 4 &&
-                    conjunto_solucion[4].id == 6 &&
-                    conjunto_solucion[5].id == 8) {
-                    cout << "Solucion encontrada: ";
-                    }
 
             if (paso == numorisMaximos-1) {
                 copyArr(TorreInstance.floorMap, TempTorre.floorMap, TorreInstance.enemies); 
