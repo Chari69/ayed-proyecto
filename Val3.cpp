@@ -304,20 +304,23 @@ bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHav
     return Combat(numoriUser, numoriTower, piso, userAlreadyHaveTurn, SelectedUser, SelectedRival);
 }
 
-bool TorreLimpiada(Numori* numoris, Torre TorreInstance, int piso = 0, int victorias = 0) {
-    if(victorias == TorreInstance.floors) { // ganamos cuando el numero de victorias es igual al numero de pisos
+bool TorreLimpiada(Numori* numoris, Torre TorreInstance) {
+    int victorias = 0;
+
+    for(int i = 0; i < TorreInstance.floors; i++) {
+        if(Combat(numoris, TorreInstance, i)) {   
+            victorias++;
+        } else {
+            return false;
+        }
+    }
+
+    if (victorias == TorreInstance.floors) {
         if(DEBUG) cout << "Torre Limpiada!" << endl; // DEBUG
         return true;
     }
 
-    if(Combat(numoris, TorreInstance, piso)) {
-        victorias++;
-        piso++;
-    } else {
-        return false;
-    }
-
-    return TorreLimpiada(numoris, TorreInstance, piso, victorias);
+    return false; 
 }
 
 
@@ -337,7 +340,7 @@ void applyGlobalsSol(Numori *old_arr, Numori *new_arr, int size) {
     cout << "Total Deaths: " << deaths << endl;
     cout << "------------------------" << endl;*/
 }
-void resetGlobalsSol() {
+void resetCurrentSol() {
     current_damage = 0.0;
     current_deaths = 0;
 }
@@ -388,7 +391,7 @@ void esMejorSol(Numori* conjunto_solucion){
             }
         }
     }
-    resetGlobalsSol();
+    resetCurrentSol();
 }
 
 
@@ -411,13 +414,14 @@ int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(
                 copyArr(TorreInstance.floorMap, TempTorre.floorMap, TorreInstance.enemies); 
                 copyArr(conjunto_solucion, TempNumoris, numorisMaximos);
             }
-            if (TorreLimpiada(TempNumoris, TempTorre)&&paso == numorisMaximos-1) {
+            if (paso == numorisMaximos-1 && TorreLimpiada(TempNumoris, TempTorre)) {
                     /*for(int i = 0; i < numorisMaximos; i++) {
                         cout << TempNumoris[i].id << " "; 
                     }
                     cout << "CD:" << current_damage << " CT:" << current_deaths << endl;*/
                 esMejorSol(TempNumoris);
             } else {
+                resetCurrentSol(); 
                 backtracking(paso + 1, numoris, TorreInstance, conjunto_solucion);
             }
             deshacerAlternativa(conjunto_solucion,paso);
