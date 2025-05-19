@@ -188,43 +188,56 @@ void copyArr(Numori *old_arr, Numori *new_arr, int size) {
     }
 }
 
+string cStrMin(string resultado) {
+    for (int i = 0; i < resultado.length(); i++) {
+        int caracter = resultado[i];
+        if (caracter >= 'A' && caracter <= 'Z') {
+            resultado[i] = caracter + 32;
+        }
+    }
+    return resultado;
+}
+
 float AttackRival(Numori *numoriUser, Numori *numoriRival, int user, int rival) {
+    string numoriUserType = cStrMin(numoriUser[user].type);
+    string numoriRivalType = cStrMin(numoriRival[rival].type);
+
     // Tipo Agua
-    if(numoriUser[user].type == "Agua") {
-        if(numoriRival[rival].type == "Fuego") {    // x2 Daño
+    if(numoriUserType == "agua") {
+        if(numoriRivalType == "fuego") {    // x2 Daño
             return numoriUser[user].attack * 2;
         } 
-        if(numoriRival[rival].type == "Aire") {     // Mitad de daño
+        if(numoriRivalType == "aire") {     // Mitad de daño
             return numoriUser[user].attack / 2;
         }
     } 
 
     // Tipo Fuego
-    if(numoriUser[user].type == "Fuego") {
-        if(numoriRival[rival].type == "Tierra") {   // x2 Daño
+    if(numoriUserType == "fuego") {
+        if(numoriRivalType == "tierra") {   // x2 Daño
             return numoriUser[user].attack * 2;
         } 
-        if(numoriRival[rival].type == "Agua") {     // Mitad de daño
+        if(numoriRivalType == "agua") {     // Mitad de daño
             return numoriUser[user].attack / 2;
         }
     } 
 
     // Tipo Tierra
-    if(numoriUser[user].type == "Tierra") {
-        if(numoriRival[rival].type == "Aire") {     // x2 Daño
+    if(numoriUserType == "tierra") {
+        if(numoriRivalType == "aire") {     // x2 Daño
             return numoriUser[user].attack * 2;
         }
-        if(numoriRival[rival].type == "Fuego") {    // Mitad de daño
+        if(numoriRivalType == "fuego") {    // Mitad de daño
             return numoriUser[user].attack / 2;
         }
     }
 
     // Tipo Aire
-    if(numoriUser[user].type == "Aire") {
-        if(numoriRival[rival].type == "Agua") {     // x2 Daño
+    if(numoriUserType == "aire") {
+        if(numoriRivalType == "agua") {     // x2 Daño
             return numoriUser[user].attack * 2;
         }
-        if(numoriRival[rival].type == "Tierra") {   // Mitad de daño
+        if(numoriRivalType == "tierra") {   // Mitad de daño
             return numoriUser[user].attack / 2;
         }
     }
