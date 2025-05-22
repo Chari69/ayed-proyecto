@@ -4,8 +4,6 @@
 
 using namespace std;
 
-bool DEBUG = false; // Hay que borrar todo lo que sea debug al final.
-
 class Numori {
 public:
     int id = 0;
@@ -44,6 +42,7 @@ float totalDamage = 0.0;
 float current_damage = 0.0;
 int deaths = 0;
 int current_deaths = 0;
+int casosProbados=0;
 // Fin de globales /////////////////////////////////////////////////
 
 Numori* ReadNumoris(string filename) {
@@ -246,6 +245,17 @@ float AttackRival(Numori *numoriUser, Numori *numoriRival, int user, int rival) 
     return numoriUser[user].attack;
 }
 
+bool esDebil(Numori numoriUser, Numori numoriRival) {
+    string numoriUserType = cStrMin(numoriUser.type);
+    string numoriRivalType = cStrMin(numoriRival.type);
+
+    if(numoriRivalType == "agua" && numoriUserType == "fuego") return false;
+    if(numoriRivalType == "fuego" && numoriUserType == "tierra") return false;
+    if(numoriRivalType == "tierra" && numoriUserType == "aire") return false;
+    if(numoriRivalType == "aire" && numoriUserType == "agua") return false;
+    return true;
+}
+
 // Obtiene la posicion inicial del arreglo de enemigos en la torre en determinado piso.
 int getFloorInit(Torre numoriTower, int piso) {
     int numEnemies = 0;
@@ -275,22 +285,13 @@ bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHav
 
     // Todo nuestro equipo esta muerto
     if(SelectedUser == -1) {
-        if (DEBUG) cout << "MORISTE... INTENTANDO OTRA ALTERNATIVA." << endl;
         return false;
     }
-
-    if (DEBUG) cout << "-------------" << endl;
 
     if(!userAlreadyHaveTurn) { // Turno del Usuario (falso en el primer turno)
         float dmg = AttackRival(numoriUser, numoriTower.floorMap, SelectedUser, SelectedRival);
         float &rivalLife = numoriTower.floorMap[SelectedRival].life;
         rivalLife -= dmg;
-        if (DEBUG) {
-            cout << "Turno de: USUARIO" << endl;
-            cout << "Numori: " << numoriUser[SelectedUser].name << " Vida: " << numoriUser[SelectedUser].life << endl;
-            cout << "Ataque: " << dmg << endl;
-            cout << "Rival: " << numoriTower.floorMap[SelectedRival].name << " Vida: " << rivalLife << endl;
-        }
         userAlreadyHaveTurn = true; 
     } else { // Turno del rival
         float dmg = AttackRival(numoriTower.floorMap, numoriUser, SelectedRival, SelectedUser); 
@@ -305,12 +306,6 @@ bool Combat(Numori *numoriUser, Torre numoriTower, int piso, bool userAlreadyHav
         }
 
         userLife -= dmg;
-        if (DEBUG) {
-            cout << "Turno de: RIVAL" << endl;
-            cout << "Numori: " << numoriTower.floorMap[SelectedRival].name << " Vida: " << numoriTower.floorMap[SelectedRival].life << endl;
-            cout << "Ataque: " << dmg << endl;
-            cout << "Rival: " << numoriUser[SelectedUser].name << " Vida: " << userLife << endl;
-        }
         userAlreadyHaveTurn = false; 
     }
 
@@ -329,7 +324,6 @@ bool TorreLimpiada(Numori* numoris, Torre TorreInstance) {
     }
 
     if (victorias == TorreInstance.floors) {
-        if(DEBUG) cout << "Torre Limpiada!" << endl; // DEBUG
         return true;
     }
 
@@ -344,33 +338,38 @@ void applyGlobalsSol(Numori *old_arr, Numori *new_arr, int size) {
     copyArr(old_arr, new_arr, size);
     deaths = current_deaths;
     totalDamage = current_damage;
-    /*cout << "Mejor Solucion: " << endl;
-    for (int i = 0; i < numorisMaximos; i++) {
-        cout << new_arr[i].id << " ";
-    }
-    cout << endl;
-    cout << "Total Damage: " << totalDamage << endl;
-    cout << "Total Deaths: " << deaths << endl;
-    cout << "------------------------" << endl;*/
 }
+
 void resetCurrentSol() {
     current_damage = 0.0;
     current_deaths = 0;
 }
-bool alternativaValida(Numori* conjunto_solucion=nullptr,int paso=0, Numori alternativa=Numori()) {
+
+bool alternativaValida(Numori* conjunto_solucion=nullptr,int paso=0, Numori alternativa=Numori(), Torre TorreInstance=Torre()) {
+    if (paso == 0) {
+        if(!esDebil(alternativa, TorreInstance.floorMap[0])) {
+            return false;
+        } 
+    }
+    if(paso >= numorisMaximos) {
+        return false;
+    }
     for (int i = 0; i < numorisMaximos ; i++) {
         if (conjunto_solucion[i].id == alternativa.id) {
             return false;
         }
     }
-    return paso<numorisMaximos? true : false;
+    return true;
 }
+
 void deshacerAlternativa(Numori* conjunto_solucion=nullptr ,int i=0) {
     conjunto_solucion[i] = Numori();
 }
+
 void aplicarAlternativa(Numori* conjunto_solucion=nullptr ,Numori alternativa=Numori(), int i=0) {
     conjunto_solucion[i] = alternativa;
 }
+
 void esMejorSol(Numori* conjunto_solucion){
     if(hasFindedSol == false) {
         hasFindedSol = true;
@@ -381,11 +380,14 @@ void esMejorSol(Numori* conjunto_solucion){
     if(current_deaths < deaths) {
         applyGlobalsSol(conjunto_solucion, solucion, numorisMaximos);
     }
+
     if(current_deaths == deaths && current_damage < totalDamage) {
         applyGlobalsSol(conjunto_solucion, solucion, numorisMaximos);
     }
+
     if(current_damage == totalDamage && current_deaths == deaths) {
         int sumaSolGlobal=0, sumaSolActual=0;
+
         for(int i = 0; i<numorisMaximos; i++){
             sumaSolGlobal += solucion[i].id;
             sumaSolActual += conjunto_solucion[i].id;
@@ -419,7 +421,7 @@ int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(
     int i = 0;
     while (i < n_numoris)
     {
-        if (alternativaValida(conjunto_solucion ,paso,numoris[i]))
+        if (alternativaValida(conjunto_solucion ,paso,numoris[i], TorreInstance))
         {
             aplicarAlternativa(conjunto_solucion,numoris[i], paso);
 
@@ -428,10 +430,6 @@ int backtracking(int paso=0, Numori* numoris=nullptr, Torre TorreInstance=Torre(
                 copyArr(conjunto_solucion, TempNumoris, numorisMaximos);
             }
             if (paso == numorisMaximos-1 && TorreLimpiada(TempNumoris, TempTorre)) {
-                    /*for(int i = 0; i < numorisMaximos; i++) {
-                        cout << TempNumoris[i].id << " "; 
-                    }
-                    cout << "CD:" << current_damage << " CT:" << current_deaths << endl;*/
                 esMejorSol(TempNumoris);
             } else {
                 resetCurrentSol(); 
@@ -459,6 +457,6 @@ int main() {
     for (int i = 0; i < numorisMaximos; i++) {
         cout << solucion[i].id << " ";
     }
-    
+
     return 0;
 }
